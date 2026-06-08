@@ -122,6 +122,24 @@ class Hook
 		return self::$fctl;
 	}
 	/**
+	 * 初始化钩子函数
+	 * 
+	 * @param string $hookfile 文件名称,例如:system
+	 * @return bool 初始化是否成功
+	 */
+	public static function load(string $hookfile): bool
+	{
+		if (empty($hookfile) || !is_file($hookfile) || !is_executable($hookfile)) {
+			return false;
+		}
+		if (self::$is_load_hook_file->offsetExists($hookfile) && self::$is_load_hook_file->offsetGet($hookfile)) {
+			return true;
+		}
+		require_once $hookfile;
+		self::$is_load_hook_file[$hookfile] = true;
+		return true;
+	}
+	/**
 	 * 执行钩子函数
 	 * 
 	 * @param string $hook_name 要执行的钩子名称
@@ -187,23 +205,23 @@ class Hook
 	}
 	/**
 	 * 加载钩子文件并启动指定钩子过程
+	 * @param string $hook_file 钩子文件路径
 	 * @param string $hook_name 钩子
 	 * @param object $app 传递对象
 	 * @return array{response: mixed, status: bool}
 	 */
-	public static function start(string $hook_name, object $app)
+	public static function start(string $hook_file, string $hook_name, object $app)
 	{
 		$next = true;
 		$response = ['status' => false, 'response' => null];
 		$before = "{$hook_name}.before";
 		$after = "{$hook_name}.after";
 		do{
-			if (!self::check($hook_name)) {
-				break;
-			}
+			if (!self::load($hook_file)) {break;}
+			if (!self::check($hook_name)) {break;}
 			$response['status'] = true;
 			if (self::check($before)) {
-				$next = self::run($before, $app) == true;
+				$next = self::run($before, $app) === false;
 			}
 			if ($next) {
 				$response['response'] = self::run($hook_name, $app);
